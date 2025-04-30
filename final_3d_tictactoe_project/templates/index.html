@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>3D Tic-Tac-Toe (Enhanced UI)</title>
+  <style>
+    body {
+      margin: 0;
+      background: #000;
+      color: #0f0;
+      font-family: 'Courier New', Courier, monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+    header {
+      text-align: center;
+      padding: 20px;
+    }
+    h1 {
+      color: #00ff00;
+      margin: 0;
+      font-size: 2em;
+    }
+    #controls {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin: 10px;
+    }
+    label {
+      font-weight: bold;
+    }
+    #difficulty {
+      padding: 5px;
+      font-size: 14px;
+    }
+    button {
+      background: #0044ff;
+      color: white;
+      font-weight: bold;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    #board {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      padding: 0;
+      background: transparent;
+    }
+    .layer {
+      display: grid;
+      grid-template-columns: repeat(4, 35px);
+      grid-template-rows: repeat(4, 35px);
+      gap: 2px;
+      transform: perspective(600px) rotateX(30deg) rotateY(10deg);
+      transform-origin: top center;
+    }
+    .cell {
+      background: transparent;
+      border: 1px solid #0f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: bold;
+      color: #0f0;
+      cursor: pointer;
+      transition: background 0.2s;
+      box-shadow: inset 0 0 3px #0f0;
+    }
+    .cell:hover {
+      background: #003300;
+    }
+    .X { color: cyan; }
+    .O { color: red; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>3D Tic-Tac-Toe</h1>
+  </header>
+  <div id="controls">
+    <label>Play:</label>
+    <span style="color:cyan; font-size: 20px;">●</span>
+    <label for="difficulty">Difficulty:</label>
+    <select id="difficulty">
+      <option value="0">Easy</option>
+      <option value="1">Difficult</option>
+      <option value="2">Insane</option>
+    </select>
+    <button onclick="location.reload()">RESET</button>
+  </div>
+  <div id="board"></div>
+
+<script>
+const board = document.getElementById('board');
+const boardState = Array(4).fill().map(() => Array(4).fill().map(() => Array(4).fill(0)));
+
+for (let z = 0; z < 4; z++) {
+  const layer = document.createElement('div');
+  layer.className = 'layer';
+  for (let y = 0; y < 4; y++) {
+    for (let x = 0; x < 4; x++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.dataset.x = x;
+      cell.dataset.y = y;
+      cell.dataset.z = z;
+      cell.addEventListener('click', handleClick);
+      layer.appendChild(cell);
+    }
+  }
+  board.appendChild(layer);
+}
+
+function handleClick(e) {
+  const cell = e.target;
+  const x = parseInt(cell.dataset.x);
+  const y = parseInt(cell.dataset.y);
+  const z = parseInt(cell.dataset.z);
+  if (boardState[x][y][z] !== 0) return;
+
+  boardState[x][y][z] = 1;
+  cell.textContent = 'X';
+  cell.classList.add('X');
+  cell.style.pointerEvents = 'none';
+
+  const difficulty = parseInt(document.getElementById('difficulty').value);
+
+  fetch('/move', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ x, y, z, player: 1, difficulty })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.ai_move) {
+      const [aiX, aiY, aiZ] = data.ai_move;
+      const aiCell = document.querySelector(
+        `.cell[data-x='${aiX}'][data-y='${aiY}'][data-z='${aiZ}']`
+      );
+      if (aiCell) {
+        boardState[aiX][aiY][aiZ] = 2;
+        aiCell.textContent = 'O';
+        aiCell.classList.add('O');
+        aiCell.style.pointerEvents = 'none';
+      }
+    }
+    if (data.winner !== undefined) {
+      setTimeout(() => {
+        alert(data.winner == 1 ? "You win!" : data.winner == 2 ? "AI wins!" : "It's a draw!");
+        location.reload();
+      }, 500);
+    }
+  });
+}
+</script>
+</body>
+</html>
